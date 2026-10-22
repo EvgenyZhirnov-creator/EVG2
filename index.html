@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интерактивный тест по целевой модели</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Улучшенные стили для радио-кнопок */
+        .option-label {
+            transition: all 0.2s ease-in-out;
+        }
+        .option-label:hover {
+            transform: translateY(-2px);
+        }
+        .selected {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+        .correct {
+            border-color: #10b981 !important;
+            background-color: #ecfdf5 !important;
+            color: #065f46 !important;
+        }
+        .incorrect {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+            color: #991b1b !important;
+        }
+        /* Анимация появления */
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100">
+
+    <div id="app-container" class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden fade-in">
+        
+        <!-- Заголовок и прогресс-бар -->
+        <div class="bg-indigo-600 p-6 text-white">
+            <h1 class="text-2xl font-bold text-center mb-4">Тестирование: Целевая модель (TO BE)</h1>
+            <div id="progress-container" class="hidden">
+                <div class="flex justify-between text-sm mb-2 text-indigo-100 font-medium">
+                    <span>Вопрос <span id="current-q-num">1</span> из <span id="total-q-num">11</span></span>
+                    <span id="score-display">Счет: 0</span>
+                </div>
+                <div class="w-full bg-indigo-800 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-green-400 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 md:p-8">
+            
+            <!-- Стартовый экран -->
+            <div id="start-screen" class="text-center">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Добро пожаловать в тестирование!</h2>
+                <p class="text-gray-600 mb-8">Вам предстоит ответить на 11 вопросов о целевой модели СМОТ, метриках AuM, ИП и правилах кросс-премии.</p>
+                <button onclick="startQuiz()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-lg shadow-md transition duration-300 transform hover:scale-105">
+                    Начать тест
+                </button>
+            </div>
+
+            <!-- Экран вопроса -->
+            <div id="quiz-screen" class="hidden">
+                <h2 id="question-text" class="text-xl font-semibold text-gray-800 mb-6">Текст вопроса</h2>
+                
+                <div id="options-container" class="space-y-3 mb-8">
+                    <!-- Варианты ответов будут генерироваться здесь -->
+                </div>
+
+                <div id="feedback-msg" class="hidden text-center font-medium rounded-lg p-3 mb-4"></div>
+
+                <div class="flex justify-end">
+                    <button id="action-btn" onclick="handleAction()" disabled class="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-6 rounded-lg transition duration-300">
+                        Ответить
+                    </button>
+                </div>
+            </div>
+
+            <!-- Экран результатов -->
+            <div id="result-screen" class="hidden text-center">
+                <div class="mb-6 inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full">
+                    <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Тест завершен!</h2>
+                <p class="text-lg text-gray-600 mb-6">Ваш результат: <span id="final-score" class="font-bold text-indigo-600"></span> из 11</p>
+                
+                <div id="result-message" class="p-4 rounded-lg bg-gray-50 text-gray-700 mb-8 font-medium">
+                    <!-- Сообщение в зависимости от результата -->
+                </div>
+
+                <button onclick="location.reload()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-lg shadow-md transition duration-300">
+                    Пройти заново
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // База вопросов (ответы перемешаны для интереса, correctIndex указывает на правильный)
+        const quizData = [
+            {
+                question: "На какие показатели разделен «Прирост AuM» в целевой модели (TO BE) для основного СМОТ?",
+                options: [
+                    "прирост ППС+СП и Сальдо ИП", 
+                    "портфель АКБ и Прирост АКБ", 
+                    "портфель ППС+СП и Портфель ИП"
+                ],
+                correctIndex: 0
+            },
+            {
+                question: "Какие веса установлены для показателей «Прирост ППС+СП» и «Сальдо ИП» соответственно в модели TO BE?",
+                options: [
+                    "50% и 50%", 
+                    "60% и 40%", 
+                    "40% и 60%"
+                ],
+                correctIndex: 1
+            },
+            {
+                question: "Каков максимально допустимый процент перевыполнения для новых показателей (Прирост ППС+СП и Сальдо ИП)?",
+                options: [
+                    "не более 100%", 
+                    "не более 150%", 
+                    "не более 200%"
+                ],
+                correctIndex: 2
+            },
+            {
+                question: "Какие средства входят в состав интегрального показателя в целевой модели?",
+                options: [
+                    "рублевые средства в пассивных, партнерских, инвестиционных продуктах и драгоценные металлы, а также квазивалютные средства и средства в юанях...", 
+                    "только валютные субординированные облигации и карты иностранного банка", 
+                    "исключительно рублевые средства на текущих счетах и вкладах"
+                ],
+                correctIndex: 0
+            },
+            {
+                question: "Изменился ли вес показателя «Прирост АКБ» для роли ПМ/ПМУ при переходе к целевой модели (TO BE)?",
+                options: [
+                    "да, увеличился до 25%", 
+                    "да, снизился до 5%", 
+                    "нет, остался на уровне 10%"
+                ],
+                correctIndex: 2
+            },
+            {
+                question: "Какое ограничение действовало на получение кросс-премии руководителем в модели AS IS при ИПП меньше 100%?",
+                options: [
+                    "руководитель получал не более 1,5 окладов", 
+                    "руководитель и эксперт не получали премию", 
+                    "руководитель получал премию в полном объеме"
+                ],
+                correctIndex: 1
+            },
+            {
+                question: "Какое ограничение действовало на получение кросс-премии менеджерами в модели AS IS при ИПП меньше 100%?",
+                options: [
+                    "менеджеры получали не более 1,5 окладов", 
+                    "менеджеры не получали премию", 
+                    "менеджеры получали премию в полном объеме"
+                ],
+                correctIndex: 0
+            },
+            {
+                question: "При каком размере ИПП сотрудник (ПМ/ПМУ) начинает получать 50% доли кросс-премии в целевой модели (TO BE)?",
+                options: [
+                    "в диапазоне 40-49%", 
+                    "в диапазоне 50-59%", 
+                    "в диапазоне 70-79%"
+                ],
+                correctIndex: 1
+            },
+            {
+                question: "При каком минимальном размере ИПП руководитель (НОРСК/ДДО) начинает получать 50% доли кросс-премии в целевой модели (TO BE)?",
+                options: [
+                    "в диапазоне 50-59%", 
+                    "в диапазоне 80-89%", 
+                    "в диапазоне 70-79%"
+                ],
+                correctIndex: 2
+            },
+            {
+                question: "Как учитывается премия за продажу продукта СЖ/ПДС для сотрудников ДКО в модели TO BE?",
+                options: [
+                    "выплачивается, если клиент закреплен за менеджером в момент оформления сделки вне зависимости от способа и канала оформления", 
+                    "всегда учитывается за менеджером, который фактически оформил договор", 
+                    "премия не выплачивается сотрудникам ДКО"
+                ],
+                correctIndex: 0
+            },
+            {
+                question: "На что напрямую влияет корректировка на перевыполнение плана по сальдо ИП?",
+                options: [
+                    "на расчет кросс-мотивации", 
+                    "на расчет основного СМОТ", 
+                    "на расчет портфеля АКБ"
+                ],
+                correctIndex: 0
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let selectedOptionIndex = null;
+        let isAnswerSubmitted = false;
+
+        // DOM элементы
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const currentQNum = document.getElementById('current-q-num');
+        const totalQNum = document.getElementById('total-q-num');
+        const scoreDisplay = document.getElementById('score-display');
+        
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const actionBtn = document.getElementById('action-btn');
+        const feedbackMsg = document.getElementById('feedback-msg');
+
+        function startQuiz() {
+            startScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            quizScreen.classList.add('fade-in');
+            progressContainer.classList.remove('hidden');
+            totalQNum.textContent = quizData.length;
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            // Сброс состояний
+            selectedOptionIndex = null;
+            isAnswerSubmitted = false;
+            actionBtn.textContent = 'Ответить';
+            actionBtn.disabled = true;
+            feedbackMsg.classList.add('hidden');
+            
+            // Обновление UI
+            const q = quizData[currentQuestion];
+            questionText.textContent = `${currentQuestion + 1}. ${q.question}`;
+            currentQNum.textContent = currentQuestion + 1;
+            progressBar.style.width = `${((currentQuestion) / quizData.length) * 100}%`;
+            
+            // Очистка и рендер вариантов
+            optionsContainer.innerHTML = '';
+            q.options.forEach((option, index) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = `option-label border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 flex items-start`;
+                optionDiv.onclick = () => selectOption(index, optionDiv);
+                
+                optionDiv.innerHTML = `
+                    <div class="flex-shrink-0 mt-0.5">
+                        <div class="w-5 h-5 border border-gray-400 rounded-full flex items-center justify-center radio-circle">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full hidden inner-circle"></div>
+                        </div>
+                    </div>
+                    <div class="ml-3 text-gray-700 leading-tight">${option}</div>
+                `;
+                optionsContainer.appendChild(optionDiv);
+            });
+        }
+
+        function selectOption(index, element) {
+            if (isAnswerSubmitted) return; // Блокируем выбор после ответа
+
+            selectedOptionIndex = index;
+            actionBtn.disabled = false;
+
+            // Сброс стилей у всех опций
+            const allOptions = optionsContainer.children;
+            for (let i = 0; i < allOptions.length; i++) {
+                allOptions[i].classList.remove('selected', 'border-blue-500');
+                allOptions[i].querySelector('.inner-circle').classList.add('hidden');
+                allOptions[i].querySelector('.radio-circle').classList.remove('border-blue-500');
+            }
+
+            // Установка стилей для выбранной опции
+            element.classList.add('selected');
+            element.querySelector('.inner-circle').classList.remove('hidden');
+            element.querySelector('.radio-circle').classList.add('border-blue-500');
+        }
+
+        function handleAction() {
+            if (!isAnswerSubmitted) {
+                checkAnswer();
+            } else {
+                nextQuestion();
+            }
+        }
+
+        function checkAnswer() {
+            isAnswerSubmitted = true;
+            const q = quizData[currentQuestion];
+            const allOptions = optionsContainer.children;
+
+            // Проверка правильности
+            if (selectedOptionIndex === q.correctIndex) {
+                score++;
+                scoreDisplay.textContent = `Счет: ${score}`;
+                feedbackMsg.textContent = "Верно!";
+                feedbackMsg.className = "text-center font-medium rounded-lg p-3 mb-4 bg-green-100 text-green-800 border border-green-200";
+            } else {
+                feedbackMsg.textContent = "Неверно.";
+                feedbackMsg.className = "text-center font-medium rounded-lg p-3 mb-4 bg-red-100 text-red-800 border border-red-200";
+                // Подсвечиваем неправильный выбор
+                allOptions[selectedOptionIndex].classList.add('incorrect');
+            }
+
+            feedbackMsg.classList.remove('hidden');
+
+            // Подсвечиваем правильный ответ всегда
+            allOptions[q.correctIndex].classList.add('correct');
+            
+            // Меняем кнопку
+            if (currentQuestion === quizData.length - 1) {
+                actionBtn.textContent = 'Завершить тест';
+            } else {
+                actionBtn.textContent = 'Далее';
+            }
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion < quizData.length) {
+                // Анимация смены вопроса
+                quizScreen.classList.remove('fade-in');
+                void quizScreen.offsetWidth; // Trigger reflow
+                quizScreen.classList.add('fade-in');
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            quizScreen.classList.add('hidden');
+            progressContainer.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            resultScreen.classList.add('fade-in');
+
+            document.getElementById('final-score').textContent = score;
+            const percentage = (score / quizData.length) * 100;
+            const resultMsg = document.getElementById('result-message');
+
+            if (percentage === 100) {
+                resultMsg.textContent = "Идеальный результат! Вы отлично знаете новую целевую модель.";
+                resultMsg.className = "p-4 rounded-lg bg-green-50 text-green-700 mb-8 font-medium border border-green-200";
+            } else if (percentage >= 70) {
+                resultMsg.textContent = "Хороший результат. Вы хорошо ориентируетесь в метриках, но есть что повторить.";
+                resultMsg.className = "p-4 rounded-lg bg-blue-50 text-blue-700 mb-8 font-medium border border-blue-200";
+            } else {
+                resultMsg.textContent = "Стоит освежить знания. Рекомендуем еще раз ознакомиться с материалами по целевой модели СМОТ.";
+                resultMsg.className = "p-4 rounded-lg bg-orange-50 text-orange-700 mb-8 font-medium border border-orange-200";
+            }
+        }
+    </script>
+</body>
+</html>
